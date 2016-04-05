@@ -1,0 +1,4 @@
+
+We need each LateConsumer instance to also correlate to its own KafkaThread, mimicing distinct instances.
+
+Sharing a KafkaThread also shares the underlying KafkaConsumer, which basically does nothing--only one LateConsumer will do the work.
