@@ -12,9 +12,13 @@ import scala.language.postfixOps
 // This provides at-least-once delivery guarantee. Also, shows how to perform graceful shutdown.
 //
 
+import java.util.concurrent.atomic.AtomicInteger
 object LateConsumer {
-  var count = 0
-  def reset() = count = 0
+  var count = 0 //new AtomicInteger(0)
+  def reset() = count = 0 //count.set(0) 
+  def syncInc() = this.synchronized {
+    count += 1
+  }
 }
 import LateConsumer._
 
@@ -46,9 +50,10 @@ case class LateConsumer[V](partitions: List[Int] = List(0)) {
       val src = late.source
       val commit = Flow[In].map { msg =>
         if (!done) {
-          if (count % 1000 == 0) println(s"Commit [$id]: $count")
+          // if (count % 1000 == 0) println(s"Commit [$id]: $count")
           late.commit(msg)
-          count += 1
+          // val c = count.incrementAndGet()
+          syncInc()
           // println("Message: "+i.value)
           if (count == num) {
             done = true
@@ -69,7 +74,7 @@ case class LateConsumer[V](partitions: List[Int] = List(0)) {
     })
     now = System.currentTimeMillis()
     graph.run()
+    Thread.sleep(45000)
     println(s"Done running @ $count...waiting a while")
-    // Thread.sleep(45000)
   }
 }

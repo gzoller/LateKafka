@@ -54,14 +54,15 @@ case class KafkaThread[V](
           // if (c % 10000 == 0) println("Size: " + q.size) //print('X')
           // println("COMMIT: " + cr)
           // consumer.commitSync(offsets)
+
           consumer.commitAsync(offsets, cb)
         case p: Promise[_] =>
-          p.asInstanceOf[Promise[Iterator[ConsumerRecord[Array[Byte], V]]]].success {
-            val z = consumer.poll(100)
-            if (z.size > 0) println("Pulled " + z.size)
-            z.iterator
-          }
-        // p.asInstanceOf[Promise[Iterator[ConsumerRecord[Array[Byte], V]]]].success(consumer.poll(100).iterator)
+          p.asInstanceOf[Promise[Iterator[ConsumerRecord[Array[Byte], V]]]].success(consumer.poll(100).iterator)
+        // p.asInstanceOf[Promise[Iterator[ConsumerRecord[Array[Byte], V]]]].success {
+        //   val z = consumer.poll(100)
+        // if (z.size > 0) println("Pulled " + z.size)
+        // z.iterator
+        // }
         case null => // do nothing...try again
       }
     }

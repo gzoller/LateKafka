@@ -14,7 +14,7 @@ case class LateProducer() {
 
     // Create a topic named "myTopic" with 8 partitions and a replication factor of 3
     val topicName = LCS
-    val numPartitions = 2
+    val numPartitions = 4
     val replicationFactor = 1
     val topicConfig = new java.util.Properties
     val sessionTimeoutMs = 10000

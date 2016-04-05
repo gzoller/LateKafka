@@ -51,21 +51,21 @@ class KafkaSpec() extends FunSpec with Matchers with BeforeAndAfterAll {
     */
 
     it("Multiplexes") {
-      val num = 10000
+      val num = 1000000
       (new LateProducer()).populate(num)
       Thread.sleep(1000)
 
       println("Consuming...")
       LateConsumer.reset()
-      val c1 = LateConsumer[String](List(0))
-      val c2 = LateConsumer[String](List(1))
+      val c1 = LateConsumer[String](List(0, 1))
+      val c2 = LateConsumer[String](List(2, 3))
+      // val c3 = LateConsumer[String](List(2))
+      // val c4 = LateConsumer[String](List(3))
+      val clist = List(c1, c2) //, c3, c4)
       println("Running...")
-      val f1 = Future(c1.consume(1, num))
-      val f2 = Future(c2.consume(2, num))
-      Await.result(f1, 60.seconds)
-      Await.result(f2, 60.seconds)
-      c1.stop()
-      c2.stop()
+      val f = Future.sequence(clist.zipWithIndex.map { case (c, i) => Future(c.consume(i, num)) })
+      Await.result(f, 60.seconds)
+      clist.foreach(l => l.stop())
 
       println("Done")
     }
