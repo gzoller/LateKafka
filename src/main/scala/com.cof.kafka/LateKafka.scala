@@ -5,7 +5,6 @@ import org.apache.kafka.common.serialization.Deserializer
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import scala.concurrent.{ Promise, Await }
 import scala.concurrent.duration._
-import scala.collection.convert.Wrappers.JIteratorWrapper
 
 case class LateKafka[V](
     host:         String,
@@ -20,10 +19,11 @@ case class LateKafka[V](
   type ITER_REC = Iterator[REC]
 
   private val t = KafkaThread[V](host, groupId, topic, deserializer, partitions, properties)
-  private var i: JIteratorWrapper[REC] = null
+  private var i: ITER_REC = null
   private var hasMore = true
 
   new java.lang.Thread(t).start
+  Thread.sleep(500)
   fill()
 
   def done() = hasMore = false
@@ -31,15 +31,8 @@ case class LateKafka[V](
 
   def hasNext = hasMore
   def next() = {
-    // try {
     while (i.isEmpty || !i.hasNext)
       fill()
-    // } catch {
-    //   case t: Throwable =>
-    //     println("I: " + i)
-    //     println("I class: " + i.getClass.getName())
-    //     fill()
-    // }
     i.next
   }
 
@@ -50,6 +43,6 @@ case class LateKafka[V](
     val p = Promise[ITER_REC]()
     val f = p.future
     t ! p
-    i = Await.result(f, Duration.Inf).asInstanceOf[JIteratorWrapper[REC]]
+    i = Await.result(f, Duration.Inf).asInstanceOf[ITER_REC]
   }
 }

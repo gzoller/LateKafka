@@ -14,27 +14,24 @@ import scala.language.postfixOps
 
 import java.util.concurrent.atomic.AtomicInteger
 object LateConsumer {
-  var count = 0 //new AtomicInteger(0)
-  def reset() = count = 0 //count.set(0) 
+  var count = 0
+  def reset() = count = 0
   def syncInc() = this.synchronized {
     count += 1
   }
 }
 import LateConsumer._
 
-case class LateConsumer[V](partitions: List[Int] = List(0)) {
+case class LateConsumerFlow[V](host: String, group: String, topic: String, partitions: List[Int] = List(0)) {
 
   val late = LateKafka[V](
-    "192.168.99.100:9092",
-    "group1",
-    "lowercaseStrings",
+    host,
+    group,
+    topic,
     (new org.apache.kafka.common.serialization.StringDeserializer).asInstanceOf[org.apache.kafka.common.serialization.Deserializer[V]],
     partitions
   )
-  def stop() = {
-    println("Stopping @ count " + count)
-    late.stop()
-  }
+  def stop() = late.stop()
 
   def consume(id: Int, num: Int)(implicit m: ActorMaterializer, as: ActorSystem) {
 
@@ -50,31 +47,27 @@ case class LateConsumer[V](partitions: List[Int] = List(0)) {
       val src = late.source
       val commit = Flow[In].map { msg =>
         if (!done) {
-          // if (count % 1000 == 0) println(s"Commit [$id]: $count")
           late.commit(msg)
-          // val c = count.incrementAndGet()
           syncInc()
-          // println("Message: "+i.value)
           if (count == num) {
             done = true
-            println(s"[$id] Time ($count): " + (System.currentTimeMillis() - now))
-            late.done
+            println(s"[$id] Time ($count): " + (count / ((System.currentTimeMillis() - now) / 1000)) + " TPS")
           }
         }
       }
-      val show = Flow[In].map { i =>
-        // Thread.sleep(1000)
-        // if (count % 1000 == 0)
-        // println(s"SHOW [$id]: " + i)
-        i
-      }
+      val work = Flow[In].map { i => i } // a dummy step where real "work" would happen
 
-      src ~> show ~> commit ~> Sink.ignore
+      src ~> work ~> commit ~> Sink.ignore
       ClosedShape
     })
     now = System.currentTimeMillis()
     graph.run()
-    Thread.sleep(45000)
-    println(s"Done running @ $count...waiting a while")
+
+    // Wait for a while for work to finish.  In a real (non-test) app, this would run forever.
+    while (count < num)
+      Thread.sleep(1000)
+    Thread.sleep(10000)
+    late.done
+    Thread.sleep(10000)
   }
 }
