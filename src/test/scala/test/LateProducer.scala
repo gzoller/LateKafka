@@ -28,28 +28,11 @@ case class LateProducer() {
       "key.serializer" -> "org.apache.kafka.common.serialization.ByteArraySerializer",
       "value.serializer" -> "org.apache.kafka.common.serialization.StringSerializer"
     )
-    println("::: Sending :::")
     val p = new KafkaProducer[Array[Byte], String](props)
     (1 to num).foreach { i =>
-      println("  ::: Writing " + i + " ::::")
-      p.send(new ProducerRecord[Array[Byte], String](topic, s"msg-$i"), new Callback() {
-        def onCompletion(metadata: RecordMetadata, e: Exception) {
-          if (e != null)
-            e.printStackTrace()
-          println("The offset of the record we just sent is: " + metadata)
-        }
-      })
+      p.send(new ProducerRecord[Array[Byte], String](topic, s"msg-$i"))
     }
-    println("::: Done Sending - Sleeping :::")
-    Thread.sleep(5000)
-    println("preclose")
-    try {
-      p.close(10000, java.util.concurrent.TimeUnit.MILLISECONDS)
-    } catch {
-      case t: Throwable => t.printStackTrace()
-    }
-    println("postclose")
-
+    p.close()
     println("Population complete: " + num)
   }
 }

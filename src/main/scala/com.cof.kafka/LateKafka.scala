@@ -22,9 +22,10 @@ case class LateKafka[V](
   private var i: ITER_REC = null
   private var hasMore = true
 
+  println("--A--")
   new java.lang.Thread(t).start
+  println("--B--")
   Thread.sleep(500)
-  fill()
 
   def done() = hasMore = false
   def stop() = t.stop()
@@ -37,7 +38,10 @@ case class LateKafka[V](
   }
 
   def commit(cr: REC) = t ! cr
-  def source = Source.fromIterator(() => this)
+  def source = {
+    fill()
+    Source.fromIterator(() => this)
+  }
 
   private def fill() = {
     val p = Promise[ITER_REC]()

@@ -3,12 +3,13 @@ package com.cof.kafka
 import org.apache.kafka.common.serialization.{ ByteArrayDeserializer, Deserializer, StringDeserializer }
 import java.util.concurrent.LinkedBlockingQueue
 import org.apache.kafka.common.TopicPartition
-import org.apache.kafka.clients.consumer.{ OffsetCommitCallback, ConsumerRecord, KafkaConsumer, OffsetAndMetadata }
+import org.apache.kafka.clients.consumer.{ ConsumerRebalanceListener, OffsetCommitCallback, ConsumerRecord, KafkaConsumer, OffsetAndMetadata }
 import scala.concurrent.Promise
 import java.util.concurrent.TimeUnit
 import scala.collection.JavaConversions._
 import scala.concurrent.Await
 import akka.stream.scaladsl.Source
+import java.util.Collection
 // import scala.collection.concurrent.TrieMap
 import scala.collection.mutable.{ Map => MMap }
 
@@ -30,9 +31,10 @@ import Alignment._
 
 case class OffCB() extends OffsetCommitCallback {
   def onComplete(offsets: java.util.Map[TopicPartition, OffsetAndMetadata], ex: Exception) {
-    println("---> Complete: " + offsets)
-    if (ex != null)
+    if (ex != null) {
+      print(s"ERROR [$offsets]:  ")
       ex.printStackTrace()
+    }
     /*
     offsets.map {
       case (k, v) =>
@@ -73,12 +75,17 @@ case class KafkaThread[V](
         "enable.auto.commit" -> "false",
         "auto.commit.interval.ms" -> "1000",
         "auto.offset.reset" -> "earliest",
+        // "session.timeout.ms" -> "60000",
         "group.id" -> groupId
       )),
       new ByteArrayDeserializer,
       deserializer
     )
-    consumer.assign(partitions.map(p => new TopicPartition(topic, p)))
+    consumer.subscribe(List(topic), new ConsumerRebalanceListener() {
+      def onPartitionsRevoked(partitions: Collection[TopicPartition]) { println("Revoked: " + partitions) }
+      def onPartitionsAssigned(partitions: Collection[TopicPartition]) { println("Assigned: " + partitions) }
+    })
+    // consumer.assign(partitions.map(p => new TopicPartition(topic, p)))
 
     while (running) {
       q.poll(100, TimeUnit.MILLISECONDS) match { // Polling my blocking queue...not Kafka here
@@ -97,6 +104,7 @@ case class KafkaThread[V](
         case null => // do nothing...try again
       }
     }
+    println("::: Consumer Stopped :::")
     consumer.close()
   }
 

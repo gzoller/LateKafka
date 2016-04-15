@@ -55,31 +55,35 @@ class KafkaSpec() extends FunSpec with Matchers with BeforeAndAfterAll {
     */
 
     it("Multiplexes") {
-      val num = 6 //00000
+      val num = 12
 
       (new LateProducer()).populate(num, host, topic)
-
-      /*
-      println("Consuming...")
-      LateConsumer.reset()
-      val c1 = LateConsumerFlow[String](host.replaceFirst("2181", "9092"), group, topic, List(0, 1))
-      val f1 = Future(c1.consume(0, num))
-      Await.result(f1, 90.seconds)
-      Thread.sleep(10000)
-      */
 
       println("Consuming...")
       LateConsumer.reset()
       val c1 = LateConsumerFlow[String](host.replaceFirst("2181", "9092"), group, topic, List(0, 1))
       val c2 = LateConsumerFlow[String](host.replaceFirst("2181", "9092"), group, topic, List(2, 3))
+      // Thread.sleep(1000)
+      println("Poo!")
       val clist = List(c1, c2) //, c3, c4)
       println("Running...")
       val f = Future.sequence(clist.zipWithIndex.map { case (c, i) => Future(c.consume(i, num)) })
-      Await.result(f, 90.seconds)
-      Thread.sleep(10000)
+      try {
+        Await.result(f, 5.seconds)
+      } catch {
+        case t: Throwable =>
+      }
+      groupInfo("group1")
+      Thread.sleep(4000)
+      println("Shutting down...")
       clist.foreach(l => l.stop())
 
       println("Done")
     }
+  }
+
+  def groupInfo(group: String) = {
+    println("HERE!")
+    kafka.admin.ConsumerGroupCommand.main(Array("--describe", "--group", group, "--bootstrap-server", "192.168.99.100:9092", "--new-consumer"))
   }
 }
