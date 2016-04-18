@@ -46,6 +46,7 @@ case class LateConsumerFlow[V](host: String, group: String, topic: String, parti
 
       val src = late.source
       val commit = Flow[In].map { msg =>
+        Thread.sleep(10)
         if (!done) {
           late.commit(msg)
           syncInc()

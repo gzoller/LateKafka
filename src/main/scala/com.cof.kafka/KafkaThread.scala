@@ -27,32 +27,6 @@ object Alignment {
     "lowercaseStrings-3" -> 0 //scala.collection.mutable.ListBuffer.fill(250000)(0)
   )
 }
-import Alignment._
-
-case class OffCB() extends OffsetCommitCallback {
-  def onComplete(offsets: java.util.Map[TopicPartition, OffsetAndMetadata], ex: Exception) {
-    if (ex != null) {
-      print(s"ERROR [$offsets]:  ")
-      ex.printStackTrace()
-    }
-    /*
-    offsets.map {
-      case (k, v) =>
-        val z = k.topic() + "-" + k.partition()
-        if (ex != null)
-          Z.synchronized {
-            if (scoop(z) == 0) ex.printStackTrace()
-            scoop.put(z, scoop(z) + 1)
-            // scoop(z)(v.offset.toInt) = scoop(z)(v.offset.toInt) + 1
-            // else {
-            //   println("Boom: " + ex)
-            //   scoop(z)(v.offset.toInt) = -999
-            // }
-          }
-    }
-    */
-  }
-}
 
 case class KafkaThread[V](
     host:         String,
@@ -65,7 +39,6 @@ case class KafkaThread[V](
 
   private val q = new LinkedBlockingQueue[AnyRef]()
   private var running = true
-  private val cb = OffCB()
 
   def run() {
     println("Bootstrap: " + host)
@@ -75,7 +48,8 @@ case class KafkaThread[V](
         "enable.auto.commit" -> "false",
         "auto.commit.interval.ms" -> "1000",
         "auto.offset.reset" -> "earliest",
-        // "session.timeout.ms" -> "60000",
+        // "request.timeout.ms" -> "40001",
+        // "session.timeout.ms" -> "40000",
         "group.id" -> groupId
       )),
       new ByteArrayDeserializer,
@@ -88,17 +62,26 @@ case class KafkaThread[V](
     // consumer.assign(partitions.map(p => new TopicPartition(topic, p)))
 
     while (running) {
-      q.poll(100, TimeUnit.MILLISECONDS) match { // Polling my blocking queue...not Kafka here
+      // Polling my blocking queue...not Kafka here
+      q.poll(100, TimeUnit.MILLISECONDS) match {
         case cr: ConsumerRecord[_, _] =>
+          Thread.sleep(100)
           // println("==== Value: " + cr.value() + "  ===== Partition: " + cr.partition() + " ====== Offset: " + cr.offset())
           val off = cr.offset() + 1
-          val offsets = java.util.Collections.singletonMap(
-            new TopicPartition(cr.topic(), cr.partition()),
-            new OffsetAndMetadata(off)
-          )
-          // println("   Update!: " + offsets)
-          // consumer.commitSync(offsets)
-          consumer.commitAsync(offsets, cb)
+          val offsets =
+            // println("   Update!: " + offsets)
+            // consumer.commitSync(offsets)
+            consumer.commitAsync(java.util.Collections.singletonMap(
+              new TopicPartition(cr.topic(), cr.partition()),
+              new OffsetAndMetadata(off)
+            ), new OffsetCommitCallback {
+              def onComplete(offsets: java.util.Map[TopicPartition, OffsetAndMetadata], ex: Exception) {
+                if (ex != null) {
+                  print(s"ERROR [$offsets]:  ")
+                  ex.printStackTrace()
+                }
+              }
+            })
         case p: Promise[_] =>
           p.asInstanceOf[Promise[Iterator[ConsumerRecord[Array[Byte], V]]]].success(consumer.poll(100).iterator)
         case null => // do nothing...try again

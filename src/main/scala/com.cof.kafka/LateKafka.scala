@@ -22,9 +22,7 @@ case class LateKafka[V](
   private var i: ITER_REC = null
   private var hasMore = true
 
-  println("--A--")
   new java.lang.Thread(t).start
-  println("--B--")
   Thread.sleep(500)
 
   def done() = hasMore = false

@@ -22,6 +22,9 @@ case class LateProducer() {
     } catch {
       case k: kafka.common.TopicExistsException => // do nothing...topic exists
     }
+    zkClient.close()
+
+    Thread.sleep(2000)
 
     val props = Map(
       "bootstrap.servers" -> host,
@@ -30,9 +33,34 @@ case class LateProducer() {
     )
     val p = new KafkaProducer[Array[Byte], String](props)
     (1 to num).foreach { i =>
-      p.send(new ProducerRecord[Array[Byte], String](topic, s"msg-$i"))
+      println(s">>> Sending $i")
+      p.send(new ProducerRecord[Array[Byte], String](topic, s"msg-$i"), new Callback() {
+        def onCompletion(metadata: RecordMetadata, exception: java.lang.Exception) {
+          println("----------------------------------------")
+          println("Generated: " + metadata)
+          println("Exception: " + exception)
+        }
+      })
     }
+    p.flush()
     p.close()
     println("Population complete: " + num)
   }
 }
+
+/* OUTPUT:
+
+[pool-10-thread-4-ScalaTest-running-KafkaSpec] INFO org.apache.kafka.common.utils.AppInfoParser - Kafka version : 0.10.1.0-SNAPSHOT
+[pool-10-thread-4-ScalaTest-running-KafkaSpec] INFO org.apache.kafka.common.utils.AppInfoParser - Kafka commitId : 065ddf90195e0968
+>>> Sending 1
+[kafka-producer-network-thread | producer-1] WARN org.apache.kafka.clients.NetworkClient - Error while fetching metadata with correlation id 0 : {lowercaseStrings=LEADER_NOT_AVAILABLE}
+----------------------------------------
+Generated: null
+Exception: org.apache.kafka.common.errors.TimeoutException: Failed to update metadata after 59856 ms.
+>>> Sending 2
+----------------------------------------
+Generated: null
+Exception: org.apache.kafka.common.errors.TimeoutException: Failed to update metadata after 60000 ms.
+>>> Sending 3
+
+*/ 

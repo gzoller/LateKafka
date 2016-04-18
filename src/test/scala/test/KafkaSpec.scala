@@ -55,7 +55,7 @@ class KafkaSpec() extends FunSpec with Matchers with BeforeAndAfterAll {
     */
 
     it("Multiplexes") {
-      val num = 12
+      val num = 10000
 
       (new LateProducer()).populate(num, host, topic)
 
@@ -69,12 +69,12 @@ class KafkaSpec() extends FunSpec with Matchers with BeforeAndAfterAll {
       println("Running...")
       val f = Future.sequence(clist.zipWithIndex.map { case (c, i) => Future(c.consume(i, num)) })
       try {
-        Await.result(f, 5.seconds)
+        Await.result(f, 40.seconds)
       } catch {
         case t: Throwable =>
       }
       groupInfo("group1")
-      Thread.sleep(4000)
+      Thread.sleep(20000)
       println("Shutting down...")
       clist.foreach(l => l.stop())
 
