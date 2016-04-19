@@ -33,14 +33,14 @@ case class LateProducer() {
     )
     val p = new KafkaProducer[Array[Byte], String](props)
     (1 to num).foreach { i =>
-      println(s">>> Sending $i")
-      p.send(new ProducerRecord[Array[Byte], String](topic, s"msg-$i"), new Callback() {
+      // println(s">>> Sending $i")
+      p.send(new ProducerRecord[Array[Byte], String](topic, s"msg-$i")) /*, new Callback() {
         def onCompletion(metadata: RecordMetadata, exception: java.lang.Exception) {
           println("----------------------------------------")
           println("Generated: " + metadata)
           println("Exception: " + exception)
         }
-      })
+      })*/
     }
     p.flush()
     p.close()

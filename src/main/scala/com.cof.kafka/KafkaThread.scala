@@ -76,10 +76,10 @@ case class KafkaThread[V](
               new OffsetAndMetadata(off)
             ), new OffsetCommitCallback {
               def onComplete(offsets: java.util.Map[TopicPartition, OffsetAndMetadata], ex: Exception) {
-                if (ex != null) {
-                  print(s"ERROR [$offsets]:  ")
-                  ex.printStackTrace()
-                }
+                // if (ex != null) {
+                //   print(s"ERROR [$offsets]:  ")
+                //   ex.printStackTrace()
+                // }
               }
             })
         case p: Promise[_] =>

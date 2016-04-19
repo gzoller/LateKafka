@@ -55,7 +55,7 @@ class KafkaSpec() extends FunSpec with Matchers with BeforeAndAfterAll {
     */
 
     it("Multiplexes") {
-      val num = 10000
+      val num = 1200
 
       (new LateProducer()).populate(num, host, topic)
 
