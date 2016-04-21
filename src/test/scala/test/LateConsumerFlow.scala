@@ -1,4 +1,5 @@
-package com.cof.kafka
+package co.blocke
+package latekafka
 
 import akka.stream.scaladsl._
 import akka.stream._
@@ -12,7 +13,6 @@ import scala.language.postfixOps
 // This provides at-least-once delivery guarantee. Also, shows how to perform graceful shutdown.
 //
 
-import java.util.concurrent.atomic.AtomicInteger
 object LateConsumer {
   var count = 0
   def reset() = count = 0
@@ -22,23 +22,19 @@ object LateConsumer {
 }
 import LateConsumer._
 
-case class LateConsumerFlow[V](host: String, group: String, topic: String, partitions: List[Int] = List(0)) {
+case class LateConsumerFlow[V](host: String, group: String, topic: String) {
 
   val late = LateKafka[V](
     host,
     group,
     topic,
-    (new org.apache.kafka.common.serialization.StringDeserializer).asInstanceOf[org.apache.kafka.common.serialization.Deserializer[V]],
-    partitions
+    (new org.apache.kafka.common.serialization.StringDeserializer).asInstanceOf[org.apache.kafka.common.serialization.Deserializer[V]]
   )
   def stop() = late.stop()
 
-  def consume(id: Int, num: Int)(implicit m: ActorMaterializer, as: ActorSystem) {
+  def consume(id: Int, num: Int)(implicit m: ActorMaterializer, as: ActorSystem) = {
 
     implicit val t = Timeout(10 seconds)
-
-    var now: Long = 0L
-    var done = false
 
     val graph = RunnableGraph.fromGraph(GraphDSL.create() { implicit builder: GraphDSL.Builder[akka.NotUsed] =>
       import GraphDSL.Implicits._
@@ -46,29 +42,22 @@ case class LateConsumerFlow[V](host: String, group: String, topic: String, parti
 
       val src = late.source
       val commit = Flow[In].map { msg =>
-        Thread.sleep(10)
-        if (!done) {
-          late.commit(msg)
-          syncInc()
-          if (count == num) {
-            done = true
-            println(s"[$id] Time ($count): " + (count / ((System.currentTimeMillis() - now) / 1000)) + " TPS")
-          }
-        }
+        late.commit(msg)
+        syncInc()
       }
       val work = Flow[In].map { i => i } // a dummy step where real "work" would happen
 
       src ~> work ~> commit ~> Sink.ignore
       ClosedShape
     })
-    now = System.currentTimeMillis()
+    val now = System.currentTimeMillis()
     graph.run()
 
     // Wait for a while for work to finish.  In a real (non-test) app, this would run forever.
     while (count < num)
       Thread.sleep(1000)
-    Thread.sleep(10000)
     late.done
-    Thread.sleep(10000)
+    val ms = System.currentTimeMillis() - now
+    (count / (ms / 1000.0)).toInt
   }
 }

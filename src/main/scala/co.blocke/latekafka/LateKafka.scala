@@ -1,4 +1,5 @@
-package com.cof.kafka
+package co.blocke
+package latekafka
 
 import akka.stream.scaladsl.Source
 import org.apache.kafka.common.serialization.Deserializer
@@ -11,22 +12,26 @@ case class LateKafka[V](
     groupId:      String,
     topic:        String,
     deserializer: Deserializer[V],
-    partitions:   List[Int]           = List(0),
     properties:   Map[String, String] = Map.empty[String, String]
 ) extends Iterator[ConsumerRecord[Array[Byte], V]] {
 
   type REC = ConsumerRecord[Array[Byte], V]
   type ITER_REC = Iterator[REC]
 
-  private val t = KafkaThread[V](host, groupId, topic, deserializer, partitions, properties)
+  private val t = KafkaThread[V](host, groupId, topic, deserializer, properties)
+  private val h = Heartbeat(t, 100L)
   private var i: ITER_REC = null
   private var hasMore = true
 
   new java.lang.Thread(t).start
+  new java.lang.Thread(h).start
   Thread.sleep(500)
 
   def done() = hasMore = false
-  def stop() = t.stop()
+  def stop() = {
+    t.stop()
+    h.stop()
+  }
 
   def hasNext = hasMore
   def next() = {

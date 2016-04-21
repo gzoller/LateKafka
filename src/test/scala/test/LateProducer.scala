@@ -1,7 +1,8 @@
-package com.cof.kafka
+package co.blocke
+package latekafka
 
 import scala.collection.JavaConversions._
-import org.apache.kafka.clients.producer.{ ProducerRecord, KafkaProducer, Callback, RecordMetadata }
+import org.apache.kafka.clients.producer.{ ProducerRecord, KafkaProducer }
 import kafka.admin.AdminUtils
 import kafka.utils.ZkUtils
 
@@ -33,34 +34,10 @@ case class LateProducer() {
     )
     val p = new KafkaProducer[Array[Byte], String](props)
     (1 to num).foreach { i =>
-      // println(s">>> Sending $i")
-      p.send(new ProducerRecord[Array[Byte], String](topic, s"msg-$i")) /*, new Callback() {
-        def onCompletion(metadata: RecordMetadata, exception: java.lang.Exception) {
-          println("----------------------------------------")
-          println("Generated: " + metadata)
-          println("Exception: " + exception)
-        }
-      })*/
+      p.send(new ProducerRecord[Array[Byte], String](topic, s"msg-$i"))
     }
     p.flush()
     p.close()
     println("Population complete: " + num)
   }
 }
-
-/* OUTPUT:
-
-[pool-10-thread-4-ScalaTest-running-KafkaSpec] INFO org.apache.kafka.common.utils.AppInfoParser - Kafka version : 0.10.1.0-SNAPSHOT
-[pool-10-thread-4-ScalaTest-running-KafkaSpec] INFO org.apache.kafka.common.utils.AppInfoParser - Kafka commitId : 065ddf90195e0968
->>> Sending 1
-[kafka-producer-network-thread | producer-1] WARN org.apache.kafka.clients.NetworkClient - Error while fetching metadata with correlation id 0 : {lowercaseStrings=LEADER_NOT_AVAILABLE}
-----------------------------------------
-Generated: null
-Exception: org.apache.kafka.common.errors.TimeoutException: Failed to update metadata after 59856 ms.
->>> Sending 2
-----------------------------------------
-Generated: null
-Exception: org.apache.kafka.common.errors.TimeoutException: Failed to update metadata after 60000 ms.
->>> Sending 3
-
-*/ 

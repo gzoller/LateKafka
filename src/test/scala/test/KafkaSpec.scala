@@ -1,4 +1,5 @@
-package com.cof.kafka
+package co.blocke
+package latekafka
 
 import org.scalatest._
 import scala.concurrent._
@@ -31,59 +32,45 @@ class KafkaSpec() extends FunSpec with Matchers with BeforeAndAfterAll {
   }
 
   describe("Kafka Must...") {
-    /*
     it("Is fast") {
       val num = 1000000
-      (new LateProducer()).populate(num)
-      // println("Check lag...")
-      Thread.sleep(1000)
+      (new LateProducer()).populate(num, host, topic)
+      partitionInfo(topic)
 
       println("Consuming...")
-      val late = LateKafka[String](
-        "192.168.99.100:9092",
-        "group1",
-        "lowercaseStrings",
-        new org.apache.kafka.common.serialization.StringDeserializer
-      )
-      val c1 = LateConsumer(late)
-      val f1 = Future(c1.consume(1, num))
-      Await.result(f1, 60.seconds)
-      late.stop
-
-      println("Done")
+      LateConsumer.reset()
+      val c = LateConsumerFlow[String](host.replaceFirst("2181", "9092"), group, topic)
+      val f = Future(c.consume(1, num))
+      val tps = Await.result(f, 15.seconds)
+      println(tps + " TPS")
+      groupInfo("group1")
+      c.stop()
     }
-    */
 
     it("Multiplexes") {
-      val num = 1200
+      val num = 1000000
 
       (new LateProducer()).populate(num, host, topic)
 
       println("Consuming...")
       LateConsumer.reset()
-      val c1 = LateConsumerFlow[String](host.replaceFirst("2181", "9092"), group, topic, List(0, 1))
-      val c2 = LateConsumerFlow[String](host.replaceFirst("2181", "9092"), group, topic, List(2, 3))
-      // Thread.sleep(1000)
-      println("Poo!")
-      val clist = List(c1, c2) //, c3, c4)
-      println("Running...")
+      val c1 = LateConsumerFlow[String](host.replaceFirst("2181", "9092"), group, topic)
+      val c2 = LateConsumerFlow[String](host.replaceFirst("2181", "9092"), group, topic)
+      val c3 = LateConsumerFlow[String](host.replaceFirst("2181", "9092"), group, topic)
+      val c4 = LateConsumerFlow[String](host.replaceFirst("2181", "9092"), group, topic)
+      val clist = List(c1, c2, c3, c4)
       val f = Future.sequence(clist.zipWithIndex.map { case (c, i) => Future(c.consume(i, num)) })
-      try {
-        Await.result(f, 40.seconds)
-      } catch {
-        case t: Throwable =>
-      }
+      val tps = Await.result(f, 40.seconds)
+      println(tps + " TPS")
       groupInfo("group1")
-      Thread.sleep(20000)
-      println("Shutting down...")
       clist.foreach(l => l.stop())
 
       println("Done")
     }
   }
 
-  def groupInfo(group: String) = {
-    println("HERE!")
+  def partitionInfo(topic: String) =
+    kafka.tools.GetOffsetShell.main(Array("--topic", topic, "--broker-list", "192.168.99.100:9092", "--time", "-1"))
+  def groupInfo(group: String) =
     kafka.admin.ConsumerGroupCommand.main(Array("--describe", "--group", group, "--bootstrap-server", "192.168.99.100:9092", "--new-consumer"))
-  }
 }
