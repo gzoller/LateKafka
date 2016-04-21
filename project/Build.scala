@@ -10,7 +10,8 @@ object Build extends Build {
 
   lazy val basicSettings = Seq(
     organization                := "co.blocke",
-    scalaVersion                := "2.11.8", //2.10.6", // "2.11.7",
+    scalaVersion                := "2.11.8",
+    version                     := "0.2.1",
     resolvers += "Local Maven Repository" at "file:///Users/wmy965/.m2/repository",
     ScalariformKeys.preferences := ScalariformKeys.preferences.value
       .setPreference(AlignArguments, true)
