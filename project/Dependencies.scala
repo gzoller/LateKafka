@@ -7,7 +7,6 @@ object Dependencies {
 
   def AKKA = "2.4.3"
   val KAFKA = "0.10.1.0-SNAPSHOT"
-  // val KAFKA = "0.9.0.1"
 
   val akafka       = "com.typesafe.akka"     % "akka-stream-kafka"              % "0.11-M1"
   val akka_stream  = "com.typesafe.akka"   %% "akka-stream"          % AKKA
