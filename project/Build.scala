@@ -11,7 +11,7 @@ object Build extends Build {
   lazy val basicSettings = Seq(
     organization                := "co.blocke",
     scalaVersion                := "2.11.8",
-    version                     := "0.2.1",
+    version                     := "0.2.2",
     resolvers += "Local Maven Repository" at "file:///Users/wmy965/.m2/repository",
     ScalariformKeys.preferences := ScalariformKeys.preferences.value
       .setPreference(AlignArguments, true)
@@ -32,7 +32,7 @@ object Build extends Build {
     bintrayPackageLabels                 := Seq("scala", "akka", "kafka")
   )
 
-  lazy val root = Project(id = "kafka", base = file("."))
+  lazy val root = Project(id = "latekafka", base = file("."))
     .settings(basicSettings: _*)
     .settings(pubSettings: _*)
     .settings(libraryDependencies ++=
