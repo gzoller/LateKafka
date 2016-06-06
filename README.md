@@ -7,5 +7,3 @@ Speed is king for LateKafka, and I've seen speeds nearly hitting 500,000 message
 
 Like LateRabbit there is an object wrapper that contains commitable information (Kafka offsets and partition information) along with whatever your payload object is.
 
-#WARNING: This build uses a pre-release version of Kafka (0.10.1.0-SNAPSHOT).  There are mission-critical fixes in this release since
-the last official release, 0.9.0.2.
