@@ -5,30 +5,47 @@ import scala.collection.JavaConversions._
 import org.apache.kafka.clients.producer.{ ProducerRecord, KafkaProducer }
 import kafka.admin.AdminUtils
 import kafka.utils.ZkUtils
+import org.I0Itec.zkclient.{ ZkClient, ZkConnection }
+
+import org.I0Itec.zkclient.serialize.ZkSerializer
+import org.I0Itec.zkclient.exception.{ ZkBadVersionException, ZkException, ZkMarshallingError, ZkNoNodeException, ZkNodeExistsException }
+private object ZKStringSerializer extends ZkSerializer {
+
+  @throws(classOf[ZkMarshallingError])
+  def serialize(data: Object): Array[Byte] = data.asInstanceOf[String].getBytes("UTF-8")
+
+  @throws(classOf[ZkMarshallingError])
+  def deserialize(bytes: Array[Byte]): Object = {
+    if (bytes == null)
+      null
+    else
+      new String(bytes, "UTF-8")
+  }
+}
 
 case class LateProducer() {
 
-  def populate(num: Int, host: String, topic: String) {
+  def populate(num: Int, kafkaHost: String, zookeeper: String, topic: String) {
 
-    // Create a topic named "myTopic" with 8 partitions and a replication factor of 3
     val numPartitions = 4
     val replicationFactor = 1
     val topicConfig = new java.util.Properties
     val sessionTimeoutMs = 10000
     val connectionTimeoutMs = 10000
 
-    val zkClient = ZkUtils(host.replaceFirst("9092", "2181"), sessionTimeoutMs, connectionTimeoutMs, false)
+    val zkClient = ZkUtils(zookeeper, sessionTimeoutMs, connectionTimeoutMs, false)
     try {
       AdminUtils.createTopic(zkClient, topic, numPartitions, replicationFactor, topicConfig)
     } catch {
       case k: kafka.common.TopicExistsException => // do nothing...topic exists
+      case t: Throwable                         => println("Boom: " + t)
     }
     zkClient.close()
 
     Thread.sleep(2000)
 
     val props = Map(
-      "bootstrap.servers" -> host,
+      "bootstrap.servers" -> kafkaHost,
       "key.serializer" -> "org.apache.kafka.common.serialization.ByteArraySerializer",
       "value.serializer" -> "org.apache.kafka.common.serialization.StringSerializer"
     )
