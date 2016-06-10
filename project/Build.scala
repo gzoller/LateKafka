@@ -12,7 +12,6 @@ object Build extends Build {
     organization                := "co.blocke",
     scalaVersion                := "2.11.8",
     version                     := "0.3.1",
-    resolvers += "Local Maven Repository" at "file:///Users/wmy965/.m2/repository",
     ScalariformKeys.preferences := ScalariformKeys.preferences.value
       .setPreference(AlignArguments, true)
       .setPreference(AlignParameters, true)
