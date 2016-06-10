@@ -7,3 +7,6 @@ Speed is king for LateKafka, and I've seen speeds nearly hitting 500,000 message
 
 Like LateRabbit there is an object wrapper that contains commitable information (Kafka offsets and partition information) along with whatever your payload object is.
 
+NOTE: LateKafka is designed to de-serialize Scala case classes.  If you're streaming simple primives you'll need to do some surgery on LateKafka.
+
+WARNING!  Probably don't want this feature branch!  It'd be better to let LateKafka stream any kind of primitives and let higher-order libraries do parsing if needed.

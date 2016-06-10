@@ -7,11 +7,13 @@ object Dependencies {
 
   def AKKA = "2.4.7"
   val KAFKA = "0.10.0.0"
+  val ScalaJack = "4.7.0"
 
   //val akafka       = "com.typesafe.akka"   % "akka-stream-kafka"     % "0.11-M1"
   val akka_stream  = "com.typesafe.akka"   %% "akka-stream"          % AKKA
   val akka_slf4j   = "com.typesafe.akka"   %% "akka-slf4j"           % AKKA
   val zkclient     = "com.101tec"          %  "zkclient"             % "0.5"
+  val scalajack    = "co.blocke"           %% "scalajack"            % ScalaJack
   val kafka_client = "org.apache.kafka"    %  "kafka-clients"        % KAFKA excludeAll(
     ExclusionRule(organization = "com.sun.jdmk"),
     ExclusionRule(organization = "com.sun.jmx")

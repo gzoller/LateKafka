@@ -36,7 +36,7 @@ object Build extends Build {
     .settings(basicSettings: _*)
     .settings(pubSettings: _*)
     .settings(libraryDependencies ++=
-      dep_compile(kafka_client,akka_stream,akka_slf4j) ++
+      dep_compile(kafka_client,akka_stream,akka_slf4j,scalajack) ++
       dep_test(kafka,zkclient,scalatest)
   )
 }

@@ -9,18 +9,30 @@ import scala.concurrent.Promise
 import java.util.concurrent.TimeUnit
 import scala.collection.JavaConversions._
 import scala.collection.mutable.{ Map => MMap }
+import co.blocke.scalajack._
+import scala.reflect.runtime.universe.TypeTag
+
+case class JsonDeserializer[V]()(implicit tag: TypeTag[V]) extends Deserializer[V] {
+  private val sj = ScalaJack()
+
+  var toggle = false
+
+  def close() {}
+  def configure(configs: java.util.Map[String, _], isKey: Boolean) {}
+  def deserialize(topic: String, data: Array[Byte]): V = sj.read[V](new String(data))
+}
 
 case class KafkaThread[V](
-    host:         String,
-    groupId:      String,
-    topic:        String,
-    deserializer: Deserializer[V],
-    properties:   Map[String, String]
-) extends Runnable {
+    host:       String,
+    groupId:    String,
+    topic:      String,
+    properties: Map[String, String]
+)(implicit tag: TypeTag[V]) extends Runnable {
 
   private val cmds = new LinkedBlockingQueue[AnyRef]()
   private val commits = new LinkedBlockingQueue[AnyRef]()
   private var running = true
+  private val deserializer = JsonDeserializer[V]()
 
   def run() {
     val consumer = new KafkaConsumer[Array[Byte], V](

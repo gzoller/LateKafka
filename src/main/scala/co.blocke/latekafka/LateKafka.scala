@@ -2,23 +2,22 @@ package co.blocke
 package latekafka
 
 import akka.stream.scaladsl.Source
-import org.apache.kafka.common.serialization.Deserializer
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import scala.concurrent.{ Promise, Await }
 import scala.concurrent.duration._
+import scala.reflect.runtime.universe.TypeTag
 
 case class LateKafka[V](
-    host:         String,
-    groupId:      String,
-    topic:        String,
-    deserializer: Deserializer[V],
-    properties:   Map[String, String] = Map.empty[String, String]
-) extends Iterator[ConsumerRecord[Array[Byte], V]] {
+    host:       String,
+    groupId:    String,
+    topic:      String,
+    properties: Map[String, String] = Map.empty[String, String]
+)(implicit tag: TypeTag[V]) extends Iterator[ConsumerRecord[Array[Byte], V]] {
 
   type REC = ConsumerRecord[Array[Byte], V]
   type ITER_REC = Iterator[REC]
 
-  private val t = KafkaThread[V](host, groupId, topic, deserializer, properties)
+  private val t = KafkaThread[V](host, groupId, topic, properties)
   private val h = Heartbeat(t, 100L)
   private var i: ITER_REC = null
   private var hasMore = true

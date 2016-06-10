@@ -10,6 +10,8 @@ import akka.stream.{ ActorMaterializerSettings, ActorMaterializer }
 import scala.sys.process._
 import scala.util.Try
 
+case class Pet(name: String, id: Long)
+
 class KafkaSpec() extends FunSpec with Matchers with BeforeAndAfterAll {
   def timeme(label: String, fn: () => Unit) {
     val now = System.currentTimeMillis()
@@ -49,7 +51,7 @@ class KafkaSpec() extends FunSpec with Matchers with BeforeAndAfterAll {
   }
 
   override def afterAll() {
-    as.shutdown()
+    as.terminate()
     s"docker kill $wid".!!
   }
 
@@ -67,7 +69,7 @@ class KafkaSpec() extends FunSpec with Matchers with BeforeAndAfterAll {
 
       println("Consuming...")
       LateConsumer.reset()
-      val c = LateConsumerFlow[String](kafkaHost, group, topic)
+      val c = LateConsumerFlow[Pet](kafkaHost, group, topic)
       val f = Future(c.consume(1, num))
       val tps = Await.result(f, 15.seconds)
       println(tps + " TPS")
@@ -82,10 +84,10 @@ class KafkaSpec() extends FunSpec with Matchers with BeforeAndAfterAll {
 
       println("Consuming...")
       LateConsumer.reset()
-      val c1 = LateConsumerFlow[String](kafkaHost, group, topic)
-      val c2 = LateConsumerFlow[String](kafkaHost, group, topic)
-      val c3 = LateConsumerFlow[String](kafkaHost, group, topic)
-      val c4 = LateConsumerFlow[String](kafkaHost, group, topic)
+      val c1 = LateConsumerFlow[Pet](kafkaHost, group, topic)
+      val c2 = LateConsumerFlow[Pet](kafkaHost, group, topic)
+      val c3 = LateConsumerFlow[Pet](kafkaHost, group, topic)
+      val c4 = LateConsumerFlow[Pet](kafkaHost, group, topic)
       val clist = List(c1, c2, c3, c4)
       val f = Future.sequence(clist.zipWithIndex.map { case (c, i) => Future(c.consume(i, num)) })
       val tps = Await.result(f, 40.seconds)

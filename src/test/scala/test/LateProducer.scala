@@ -5,10 +5,8 @@ import scala.collection.JavaConversions._
 import org.apache.kafka.clients.producer.{ ProducerRecord, KafkaProducer }
 import kafka.admin.AdminUtils
 import kafka.utils.ZkUtils
-import org.I0Itec.zkclient.{ ZkClient, ZkConnection }
-
 import org.I0Itec.zkclient.serialize.ZkSerializer
-import org.I0Itec.zkclient.exception.{ ZkBadVersionException, ZkException, ZkMarshallingError, ZkNoNodeException, ZkNodeExistsException }
+import org.I0Itec.zkclient.exception.ZkMarshallingError
 private object ZKStringSerializer extends ZkSerializer {
 
   @throws(classOf[ZkMarshallingError])
@@ -51,7 +49,7 @@ case class LateProducer() {
     )
     val p = new KafkaProducer[Array[Byte], String](props)
     (1 to num).foreach { i =>
-      p.send(new ProducerRecord[Array[Byte], String](topic, s"msg-$i"))
+      p.send(new ProducerRecord[Array[Byte], String](topic, s"""{"name":"Fido","id":$i}""")) // Structure message matching Pet object!
     }
     p.flush()
     p.close()

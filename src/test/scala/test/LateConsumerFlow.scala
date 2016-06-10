@@ -8,6 +8,7 @@ import akka.actor._
 import akka.util.Timeout
 import scala.concurrent.duration._
 import scala.language.postfixOps
+import scala.reflect.runtime.universe.TypeTag
 
 // Reads from topic "lowercaseStrings", processes messages and commits offset into kafka after processing.
 // This provides at-least-once delivery guarantee. Also, shows how to perform graceful shutdown.
@@ -22,13 +23,12 @@ object LateConsumer {
 }
 import LateConsumer._
 
-case class LateConsumerFlow[V](host: String, group: String, topic: String) {
+case class LateConsumerFlow[V](host: String, group: String, topic: String)(implicit tag: TypeTag[V]) {
 
   val late = LateKafka[V](
     host,
     group,
-    topic,
-    (new org.apache.kafka.common.serialization.StringDeserializer).asInstanceOf[org.apache.kafka.common.serialization.Deserializer[V]]
+    topic
   )
   def stop() = late.stop()
 
