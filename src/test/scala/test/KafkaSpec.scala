@@ -34,6 +34,8 @@ class KafkaSpec() extends FunSpec with Matchers with BeforeAndAfterAll {
       .withInputBuffer(32, 32)
   )
 
+  val props = Map("auto.offset.reset" -> "earliest")
+
   // Set server.propertise in /opt/kakfa in world server:
   //advertised.listeners=PLAINTEXTSASL://192.168.99.100:9092  (or whatever 9092 maps to!)
   //#advertised.listeners=PLAINTEXT://your.host.name:9092
@@ -67,7 +69,7 @@ class KafkaSpec() extends FunSpec with Matchers with BeforeAndAfterAll {
 
       println("Consuming...")
       LateConsumer.reset()
-      val c = LateConsumerFlow[String](kafkaHost, group, topic)
+      val c = LateConsumerFlow[String](kafkaHost, group, topic, props)
       val f = Future(c.consume(1, num))
       val tps = Await.result(f, 15.seconds)
       println(tps + " TPS")
@@ -82,10 +84,10 @@ class KafkaSpec() extends FunSpec with Matchers with BeforeAndAfterAll {
 
       println("Consuming...")
       LateConsumer.reset()
-      val c1 = LateConsumerFlow[String](kafkaHost, group, topic)
-      val c2 = LateConsumerFlow[String](kafkaHost, group, topic)
-      val c3 = LateConsumerFlow[String](kafkaHost, group, topic)
-      val c4 = LateConsumerFlow[String](kafkaHost, group, topic)
+      val c1 = LateConsumerFlow[String](kafkaHost, group, topic, props)
+      val c2 = LateConsumerFlow[String](kafkaHost, group, topic, props)
+      val c3 = LateConsumerFlow[String](kafkaHost, group, topic, props)
+      val c4 = LateConsumerFlow[String](kafkaHost, group, topic, props)
       val clist = List(c1, c2, c3, c4)
       val f = Future.sequence(clist.zipWithIndex.map { case (c, i) => Future(c.consume(i, num)) })
       val tps = Await.result(f, 40.seconds)

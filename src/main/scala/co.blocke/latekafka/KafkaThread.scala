@@ -27,8 +27,6 @@ case class KafkaThread[V](
       (properties ++ Map(
         "bootstrap.servers" -> host,
         "enable.auto.commit" -> "false",
-        "auto.commit.interval.ms" -> "1000",
-        "auto.offset.reset" -> "earliest",
         "group.id" -> groupId
       )),
       new ByteArrayDeserializer,
