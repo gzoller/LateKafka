@@ -22,13 +22,14 @@ object LateConsumer {
 }
 import LateConsumer._
 
-case class LateConsumerFlow[V](host: String, group: String, topic: String) {
+case class LateConsumerFlow[V](host: String, group: String, topic: String, props: Map[String, String] = Map.empty[String, String]) {
 
   val late = LateKafka[V](
     host,
     group,
     topic,
-    (new org.apache.kafka.common.serialization.StringDeserializer).asInstanceOf[org.apache.kafka.common.serialization.Deserializer[V]]
+    (new org.apache.kafka.common.serialization.StringDeserializer).asInstanceOf[org.apache.kafka.common.serialization.Deserializer[V]],
+    props
   )
   def stop() = late.stop()
 
