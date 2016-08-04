@@ -24,11 +24,11 @@ case class KafkaThread[V](
 
   def run() {
     val consumer = new KafkaConsumer[Array[Byte], V](
-      (properties ++ Map(
+      (Map(
         "bootstrap.servers" -> host,
         "enable.auto.commit" -> "false",
         "group.id" -> groupId
-      )),
+      ) ++ properties),
       new ByteArrayDeserializer,
       deserializer
     )

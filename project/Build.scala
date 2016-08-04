@@ -11,7 +11,7 @@ object Build extends Build {
   lazy val basicSettings = Seq(
     organization                := "co.blocke",
     scalaVersion                := "2.11.8",
-    version                     := "0.3.3",
+    version                     := "0.3.4",
     ScalariformKeys.preferences := ScalariformKeys.preferences.value
       .setPreference(AlignArguments, true)
       .setPreference(AlignParameters, true)
