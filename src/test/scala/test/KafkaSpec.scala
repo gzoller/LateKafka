@@ -26,6 +26,7 @@ class KafkaSpec() extends FunSpec with Matchers with BeforeAndAfterAll {
   var dip = "" // docker ip
   var kafkaHost = "" // kafka host
   var zooHost = "" // zookeeper host
+  val producer = LateProducer()
 
   implicit val as = ActorSystem("ReactiveKafka")
   implicit val m = ActorMaterializer(
@@ -58,7 +59,7 @@ class KafkaSpec() extends FunSpec with Matchers with BeforeAndAfterAll {
   describe("Kafka Must...") {
     it("It publishes") {
       val num = 10
-      (new LateProducer()).populate(num, kafkaHost, zooHost, topic)
+      producer.populate(num, kafkaHost, zooHost, topic)
       println("-----------------------------")
       partitionInfo(topic)
     }
@@ -94,8 +95,26 @@ class KafkaSpec() extends FunSpec with Matchers with BeforeAndAfterAll {
       println(tps + " TPS")
       groupInfo("group1")
       clist.foreach(l => l.stop())
+    }
 
-      println("Done")
+    it("Tracks end to end time") {
+      // Ahah!  Process containing the Flow (Akka Stream) must be run in its own
+      //   thread so as not to be corrupted by test activity...  Hmm...
+      val hello = new Thread(new Runnable {
+        def run() {
+          val c = TimerFlow(kafkaHost, group, topic, Map())
+          c.consume(5, 1)
+        }
+      })
+      hello.start
+      Thread.sleep(3000)
+      println("Posting...")
+      producer.enqueue(topic, System.currentTimeMillis.toString)
+      Thread.sleep(200)
+      producer.enqueue(topic, System.currentTimeMillis.toString)
+      Thread.sleep(1500)
+      producer.enqueue(topic, System.currentTimeMillis.toString)
+      Thread.sleep(20000)
     }
   }
 
