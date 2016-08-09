@@ -30,11 +30,11 @@ case class LateProducer() {
   private var p: KafkaProducer[Array[Byte], String] = null
 
   def enqueue(topic: String, item: String) = {
-    println("Sending: " + item + " to topic " + topic)
+    // println("Sending: " + item + " to topic " + topic)
     p.send(new ProducerRecord[Array[Byte], String](topic, item))
   }
 
-  def populate(num: Int, kafkaHost: String, zookeeper: String, topic: String) {
+  def create(kafkaHost: String, zookeeper: String, topic: String) {
     val numPartitions = 4
     val replicationFactor = 1
     val topicConfig = new java.util.Properties
@@ -49,15 +49,16 @@ case class LateProducer() {
       case t: Throwable                         => println("Boom: " + t)
     }
     zkClient.close()
-
-    Thread.sleep(2000)
-
+    Thread.sleep(1000)
     val props = Map(
       "bootstrap.servers" -> kafkaHost,
       "key.serializer" -> "org.apache.kafka.common.serialization.ByteArraySerializer",
       "value.serializer" -> "org.apache.kafka.common.serialization.StringSerializer"
     )
     p = new KafkaProducer[Array[Byte], String](props)
+  }
+
+  def populate(num: Int, topic: String) {
     (1 to num).foreach { i =>
       p.send(new ProducerRecord[Array[Byte], String](topic, s"msg-$i"))
     }

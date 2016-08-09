@@ -11,7 +11,7 @@ object Build extends Build {
   lazy val basicSettings = Seq(
     organization                := "co.blocke",
     scalaVersion                := "2.11.8",
-    version                     := "0.3.4",
+    version                     := "0.3.5",
     ScalariformKeys.preferences := ScalariformKeys.preferences.value
       .setPreference(AlignArguments, true)
       .setPreference(AlignParameters, true)
@@ -36,6 +36,6 @@ object Build extends Build {
     .settings(pubSettings: _*)
     .settings(libraryDependencies ++=
       dep_compile(kafka_client,akka_stream,akka_slf4j) ++
-      dep_test(kafka,zkclient,scalatest)
+      dep_test(scalajack,kafka,zkclient,scalatest)
   )
 }
