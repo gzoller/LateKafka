@@ -5,8 +5,11 @@ import org.scalatest._
 import scala.concurrent._
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
-import akka.actor.ActorSystem
+import akka.pattern.ask
+import akka.actor.{ Props, ActorSystem }
 import akka.stream.{ ActorMaterializerSettings, ActorMaterializer }
+import akka.util.Timeout
+import scala.language.postfixOps
 import scala.sys.process._
 import scala.util.Try
 
@@ -38,8 +41,6 @@ class KafkaSpec() extends FunSpec with Matchers with BeforeAndAfterAll {
   val props = Map("auto.offset.reset" -> "earliest")
 
   // Set server.propertise in /opt/kakfa in world server:
-  //advertised.listeners=PLAINTEXTSASL://192.168.99.100:9092  (or whatever 9092 maps to!)
-  //#advertised.listeners=PLAINTEXT://your.host.name:9092
   override def beforeAll() {
     wid = worldWait()
     dip = getDockerIP()
@@ -48,7 +49,8 @@ class KafkaSpec() extends FunSpec with Matchers with BeforeAndAfterAll {
     zooHost = ips(1)
     println("KAFKA HOST: " + kafkaHost)
     println("ZOO   HOST: " + zooHost)
-    Thread.sleep(7000) // let it all come up and settle down in World server
+    Thread.sleep(9000) // let it all come up and settle down in World server
+    producer.create(kafkaHost, zooHost, topic)
   }
 
   override def afterAll() {
@@ -57,64 +59,69 @@ class KafkaSpec() extends FunSpec with Matchers with BeforeAndAfterAll {
   }
 
   describe("Kafka Must...") {
-    it("It publishes") {
-      val num = 10
-      producer.populate(num, kafkaHost, zooHost, topic)
-      println("-----------------------------")
-      partitionInfo(topic)
-    }
     it("Is fast") {
       val num = 1000000
-      (new LateProducer()).populate(num, kafkaHost, zooHost, topic)
+      producer.populate(num, topic)
+      Thread.sleep(2000)
       partitionInfo(topic)
 
       println("Consuming...")
-      LateConsumer.reset()
-      val c = LateConsumerFlow[String](kafkaHost, group, topic, props)
-      val f = Future(c.consume(1, num))
-      val tps = Await.result(f, 15.seconds)
+      Aggregator.reset()
+      val sg = SpeedGraph(kafkaHost, "speed", topic, Map("auto.offset.reset" -> "earliest"))
+      val sa = as.actorOf(Props(new SpeedActor(num, sg)), "sa")
+
+      implicit val timeout = Timeout(55 seconds)
+      val tps = Try { Await.result(sa ? num, 55.seconds) }.toOption.getOrElse(0)
+
+      Thread.sleep(10000)
       println(tps + " TPS")
-      groupInfo("group1")
-      c.stop()
+      groupInfo("speed")
+      as.stop(sa)
+      Thread.sleep(3000)
     }
 
     it("Multiplexes") {
       val num = 1000000
 
-      (new LateProducer()).populate(num, kafkaHost, zooHost, topic)
-
       println("Consuming...")
-      LateConsumer.reset()
-      val c1 = LateConsumerFlow[String](kafkaHost, group, topic, props)
-      val c2 = LateConsumerFlow[String](kafkaHost, group, topic, props)
-      val c3 = LateConsumerFlow[String](kafkaHost, group, topic, props)
-      val c4 = LateConsumerFlow[String](kafkaHost, group, topic, props)
-      val clist = List(c1, c2, c3, c4)
-      val f = Future.sequence(clist.zipWithIndex.map { case (c, i) => Future(c.consume(i, num)) })
-      val tps = Await.result(f, 40.seconds)
+
+      Aggregator.reset()
+      val c = (0 to 3).map { i =>
+        println("Make " + i)
+        val sg = SpeedGraph(kafkaHost, "multiplex", topic, Map("auto.offset.reset" -> "earliest"))
+        as.actorOf(Props(new SpeedActor(num, sg)))
+      }
+      println("Let's get started...")
+      implicit val timeout = Timeout(25 seconds)
+      val futures = c.map(_ ? num)
+      val f = Future.sequence(futures)
+
+      val tps = Try { Await.result(f, 25.seconds) }.toOption.getOrElse(List(0, 0, 0, 0))
+      Thread.sleep(10000)
       println(tps + " TPS")
-      groupInfo("group1")
-      clist.foreach(l => l.stop())
+      groupInfo("multiplex")
+      c.foreach(as.stop(_))
+      Thread.sleep(3000)
     }
 
-    it("Tracks end to end time") {
-      // Ahah!  Process containing the Flow (Akka Stream) must be run in its own
-      //   thread so as not to be corrupted by test activity...  Hmm...
-      val hello = new Thread(new Runnable {
-        def run() {
-          val c = TimerFlow(kafkaHost, group, topic, Map())
-          c.consume(5, 1)
-        }
-      })
-      hello.start
+    it("Can FanOut") {
+      val fg = FilterGraph(kafkaHost, "filter", topic, Map())
+      val fa = as.actorOf(Props(new FlowActor(fg)), "fa")
       Thread.sleep(3000)
-      println("Posting...")
-      producer.enqueue(topic, System.currentTimeMillis.toString)
-      Thread.sleep(200)
-      producer.enqueue(topic, System.currentTimeMillis.toString)
-      Thread.sleep(1500)
-      producer.enqueue(topic, System.currentTimeMillis.toString)
-      Thread.sleep(20000)
+
+      println("Posting")
+      producer.enqueue(topic, Json.serializeToString[Message[MessagePayload]](Message(Map.empty[String, Any], MyThing("Gregory"))))
+      producer.enqueue(topic, Json.serializeToString[Message[MessagePayload]](Message(Map.empty[String, Any], MyThing("David"))))
+      producer.enqueue(topic, Json.serializeToString[Message[MessagePayload]](Message(Map.empty[String, Any], MyThing("Graham"))))
+      producer.enqueue(topic, Json.serializeToString[Message[MessagePayload]](Message(Map.empty[String, Any], MyThing("Katie"))))
+      producer.enqueue(topic, Json.serializeToString[Message[MessagePayload]](Message(Map.empty[String, Any], MyThing("Garth"))))
+
+      println("Waiting...")
+      Thread.sleep(5000)
+      partitionInfo(topic)
+      println("Time's up!")
+      as.stop(fa)
+      Thread.sleep(2000)
     }
   }
 
