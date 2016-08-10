@@ -5,10 +5,12 @@ import scala.collection.JavaConversions._
 import org.apache.kafka.clients.producer.{ ProducerRecord, KafkaProducer }
 import kafka.admin.AdminUtils
 import kafka.utils.ZkUtils
-import org.I0Itec.zkclient.{ ZkClient, ZkConnection }
+// import org.I0Itec.zkclient.{ ZkClient, ZkConnection }
 
 import org.I0Itec.zkclient.serialize.ZkSerializer
-import org.I0Itec.zkclient.exception.{ ZkBadVersionException, ZkException, ZkMarshallingError, ZkNoNodeException, ZkNodeExistsException }
+// import org.I0Itec.zkclient.exception.{ ZkBadVersionException, ZkException, ZkMarshallingError, ZkNoNodeException, ZkNodeExistsException }
+import org.I0Itec.zkclient.exception.ZkMarshallingError
+
 private object ZKStringSerializer extends ZkSerializer {
 
   @throws(classOf[ZkMarshallingError])
@@ -25,8 +27,14 @@ private object ZKStringSerializer extends ZkSerializer {
 
 case class LateProducer() {
 
-  def populate(num: Int, kafkaHost: String, zookeeper: String, topic: String) {
+  private var p: KafkaProducer[Array[Byte], String] = null
 
+  def enqueue(topic: String, item: String) = {
+    // println("Sending: " + item + " to topic " + topic)
+    p.send(new ProducerRecord[Array[Byte], String](topic, item))
+  }
+
+  def create(kafkaHost: String, zookeeper: String, topic: String) {
     val numPartitions = 4
     val replicationFactor = 1
     val topicConfig = new java.util.Properties
@@ -41,20 +49,20 @@ case class LateProducer() {
       case t: Throwable                         => println("Boom: " + t)
     }
     zkClient.close()
-
-    Thread.sleep(2000)
-
+    Thread.sleep(1000)
     val props = Map(
       "bootstrap.servers" -> kafkaHost,
       "key.serializer" -> "org.apache.kafka.common.serialization.ByteArraySerializer",
       "value.serializer" -> "org.apache.kafka.common.serialization.StringSerializer"
     )
-    val p = new KafkaProducer[Array[Byte], String](props)
+    p = new KafkaProducer[Array[Byte], String](props)
+  }
+
+  def populate(num: Int, topic: String) {
     (1 to num).foreach { i =>
       p.send(new ProducerRecord[Array[Byte], String](topic, s"msg-$i"))
     }
     p.flush()
-    p.close()
     println("Population complete: " + num)
   }
 }

@@ -29,6 +29,8 @@ case class LateKafka[V](
 
   def done() = hasMore = false
   def stop() = {
+    done()
+    Thread.sleep(500)
     t.stop()
     h.stop()
   }

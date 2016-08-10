@@ -21,4 +21,5 @@ object Dependencies {
     ExclusionRule(organization = "com.sun.jmx")
   )
   val scalatest    = "org.scalatest"       %% "scalatest"            % "2.2.4"
+  val scalajack    = "co.blocke"           %% "scalajack"            % "4.8.3"
 }

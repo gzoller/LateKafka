@@ -19,14 +19,17 @@ case class KafkaThread[V](
 ) extends Runnable {
 
   private val cmds = new LinkedBlockingQueue[AnyRef]()
-  private val commits = new LinkedBlockingQueue[AnyRef]()
+  private var commits = false
   private var running = true
+  private var cbWaiting = 0
 
   def run() {
+
     val consumer = new KafkaConsumer[Array[Byte], V](
       (Map(
         "bootstrap.servers" -> host,
         "enable.auto.commit" -> "false",
+        "auto.commit.interval.ms" -> "1000",
         "group.id" -> groupId
       ) ++ properties),
       new ByteArrayDeserializer,
@@ -34,12 +37,17 @@ case class KafkaThread[V](
     )
     consumer.subscribe(List(topic))
 
+    def dummyPoll() {
+      consumer.pause(consumer.assignment)
+      consumer.poll(0)
+      consumer.resume(consumer.assignment)
+    }
+
     // Record-keeping
     val lastRecord = MMap.empty[Int, Long] // partition# -> offset
 
     while (running) {
-      // Check for waiting commit orders
-      Option(commits.poll(0, TimeUnit.MILLISECONDS)).map { _ =>
+      if (commits) {
         lastRecord.map {
           case (partition, offset) =>
             consumer.commitAsync(java.util.Collections.singletonMap(
@@ -48,26 +56,31 @@ case class KafkaThread[V](
             ), null)
         }
         lastRecord.clear
+        commits = false
       }
 
-      // Polling the blocking queue feeding this thread commands...not Kafka here
       cmds.poll(100, TimeUnit.MILLISECONDS) match {
-        case cr: ConsumerRecord[_, _] =>
+        case null =>
+
+        case cr: ConsumerRecord[_, _] => // soft-commit
           lastRecord.get(cr.partition) match {
-            case Some(lrOffset) if (lrOffset >= cr.offset) => // do nothing
-            case _                                         => lastRecord.put(cr.partition, cr.offset)
+            case Some(lrOffset) if (lrOffset >= cr.offset) => // do nothing... already processed a higher offset
+            case _ =>
+              lastRecord.put(cr.partition, cr.offset)
           }
-        case p: Promise[_] =>
+
+        case p: Promise[_] => // request for more data from queue
           p.asInstanceOf[Promise[Iterator[ConsumerRecord[Array[Byte], V]]]].success(consumer.poll(100).iterator)
-        case null => // do nothing...try again
+
+        // Need a "fake", no-data, poll in order to lock in assignments for this consumer or
+        // its possible some partitions won't be properly committed.
+        case "dummy" => dummyPoll()
       }
     }
     consumer.close()
   }
 
-  def !(a: AnyRef) = cmds.put(a)
-  def !!(a: AnyRef) = commits.put(a)
-  def stop() = {
-    running = false
-  }
+  def !(a: AnyRef) = cmds.add(a)
+  def !!(a: AnyRef) = commits = true
+  def stop() = running = false
 }
