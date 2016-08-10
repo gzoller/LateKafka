@@ -7,3 +7,8 @@ Speed is king for LateKafka, and I've seen speeds nearly hitting 500,000 message
 
 Like LateRabbit there is an object wrapper that contains commitable information (Kafka offsets and partition information) along with whatever your payload object is.
 
+Please see test code for examples of use.
+
+Indended use case is to use the provided FlowActor, which contains a GraphHolder.  All this is to ensure that your Akka RunnableGraph will run as its own thread, which keeps them from crashing into each other if you have more than one.  (You can also just run a flow outside of FlowActor too if you only need one.)
+
+The key here is that LateKafka uses a thread to hold the KafkaConsumer, which is strictly single-threaded.
